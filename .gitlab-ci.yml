@@ -53,8 +53,6 @@ monitor:
   image: grafana/grafana:latest
   variables:
     GF_SECURITY_ADMIN_PASSWORD: $GRAFANA_ADMIN_PASSWORD
-  ports:
-    - "3000:3000"
   script:
     - grafana-cli plugins install grafana-piechart-panel
     - grafana-cli plugins install raintank-worldping-app
