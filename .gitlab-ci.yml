@@ -1,0 +1,62 @@
+stages:
+  - deploy
+  - test
+  - security
+  - monitor
+
+variables:
+  DOCKER_DRIVER: overlay2
+
+before_script:
+  - docker info
+
+deploy:
+  stage: deploy
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - docker login -u AchrefBY -p $DOCKER_PASSWORD
+    - docker build -t ps .
+    - docker push ps
+  only:
+    - master
+
+test:
+  stage: test
+  image: cypress/browsers:node12.16.3-chrome84
+  services:
+    - name: selenium/standalone-chrome
+  variables:
+    CYPRESS_baseUrl: http://localhost:3000
+  script:
+    - npm install cypress
+    - npm run cy:run
+  only:
+    - merge_requests
+
+security:
+  stage: security
+  image: owasp/zap2docker-stable
+  variables:
+    ZAP_DOCKER_OPTIONS: "-u http://localhost:3000"
+  script:
+    - zap-baseline.py -t http://localhost:3000 -g gen.conf -r report.html
+  artifacts:
+    paths:
+      - report.html
+  only:
+    - master
+
+monitor:
+  stage: monitor
+  image: grafana/grafana:latest
+  variables:
+    GF_SECURITY_ADMIN_PASSWORD: $GRAFANA_ADMIN_PASSWORD
+  ports:
+    - "3000:3000"
+  script:
+    - grafana-cli plugins install grafana-piechart-panel
+    - grafana-cli plugins install raintank-worldping-app
+  only:
+    - master
